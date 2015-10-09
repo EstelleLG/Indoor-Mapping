@@ -1,0 +1,12 @@
+897.344 425.997    //between Trattoria Verde and Career Center(near)
+437.433 506.039    //Tisch Commons. at “ns”
+440.927 552.859    //Tisch Common, ns —> down   near the path. In front of Room 163 
+552.016 506.881    //Tisch Common, fire place
+605.92 562.386    //in the middle of the path/ between 160 and 151
+755.586 567.127   //between women restroom and bergson (middle of the path)      ***
+726.026 524.377   //Dains Dining Hall middle (Below s and Din)
+694.061 447.25    //left bottom point of George’s Express
+793.597 449.079   //right bottom corner of George’s Express
+812.617 501.23    //Dains Dining Hall (a little bit right to “Hall”)
+895.589 487.07    between dining hall and courtyard, near the cross path.
+
