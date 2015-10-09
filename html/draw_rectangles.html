@@ -1,0 +1,187 @@
+<!DOCTYPE HTML>
+
+<html>
+	
+<head>
+	<title>Draw Rectangles with mouse</title>
+
+	<script type="text/javascript" src="gl-matrix.js"></script>
+	<script type="text/javascript" src="webgl-utils.js"></script>
+	
+	<script type="text/javascript" src="Point.js"></script>
+	<script type="text/javascript" src="Color.js"></script>
+	<script type="text/javascript" src="Drawutils.js"></script>
+    <script src="jquery.sidr.min.js"></script>
+		
+	<script id="shader-fs" type="x-shader/x-fragment">
+	    precision mediump float;
+	    
+	    uniform vec4 uColor;
+	
+	    void main(void) {
+	        gl_FragColor = uColor;
+	    }
+	</script>
+
+	<script id="shader-vs" type="x-shader/x-vertex">
+	    attribute vec3 aVertexPosition;
+	
+	    uniform mat4 uPMatrix;
+	
+	    void main(void) {
+	        gl_Position = uPMatrix * vec4(aVertexPosition, 1.0);
+	    }
+	</script>
+	
+	<script type="text/javascript">
+		var gl;
+		var shaderProgram;
+		var pMatrix = mat4.create();
+		
+		function initGL(canvas) {
+			gl = WebGLUtils.setupWebGL(canvas, {preserveDrawingBuffer:true});
+			
+			if (!gl) {
+				return;
+			}
+			
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        	
+        	gl.viewportWidth = canvas.width;
+        	gl.viewportHeight = canvas.height;
+        	
+        	mat4.ortho(0, gl.viewportWidth, 0, gl.viewportHeight, -1, 1, pMatrix);
+		}
+		
+		function getShader(gl, id) {
+	        var shaderScript = document.getElementById(id);
+	        
+	        if (!shaderScript) {
+	            return null;
+	        }
+	
+	        var str = "";
+	        var k = shaderScript.firstChild;
+	        
+	        while (k) {
+	            if (k.nodeType == 3) {
+	                str += k.textContent;
+	            }
+	            
+	            k = k.nextSibling;
+	        }
+	
+	        var shader;
+	        
+	        if (shaderScript.type == "x-shader/x-fragment") {
+	            shader = gl.createShader(gl.FRAGMENT_SHADER);
+	        } else if (shaderScript.type == "x-shader/x-vertex") {
+	            shader = gl.createShader(gl.VERTEX_SHADER);
+	        } else {
+	            return null;
+	        }
+	
+	        gl.shaderSource(shader, str);
+	        gl.compileShader(shader);
+	
+	        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+	            alert(gl.getShaderInfoLog(shader));
+	            return null;
+	        }
+	
+	        return shader;
+	    }
+
+	    function initShaders() {
+	        var fragmentShader = getShader(gl, "shader-fs");
+	        var vertexShader = getShader(gl, "shader-vs");
+	
+	        shaderProgram = gl.createProgram();
+	        gl.attachShader(shaderProgram, vertexShader);
+	        gl.attachShader(shaderProgram, fragmentShader);
+	        gl.linkProgram(shaderProgram);
+	
+	        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+	            alert("Could not initialise shaders");
+	        }
+	
+	        gl.useProgram(shaderProgram);
+	
+	        shaderProgram.vertexPositionLoc = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+	        gl.enableVertexAttribArray(shaderProgram.vertexPositionLoc);
+	        
+	        shaderProgram.colorLoc = gl.getUniformLocation(shaderProgram, "uColor");
+	        shaderProgram.pMatrixLoc = gl.getUniformLocation(shaderProgram, "uPMatrix");
+	    }
+	    		
+		function webGLStart() {
+	        var canvas = document.getElementById("webgl_canvas");
+	        initGL(canvas);
+	        initShaders();
+			
+			canvas.onmousedown = handleMouseDown;
+			
+			gl.clear(gl.COLOR_BUFFER_BIT);
+			gl.uniformMatrix4fv(shaderProgram.pMatrixLoc, false, pMatrix);
+	    }
+
+		function relativeMouseCoords(event) {
+		    var totalOffsetX = 0;
+		    var totalOffsetY = 0;
+		    var canvasX = 0;
+		    var canvasY = 0;
+		    var currentElement = document.getElementById("webgl_canvas");
+		
+		    do {
+		        totalOffsetX += currentElement.offsetLeft;
+		        totalOffsetY += currentElement.offsetTop;
+		    } while (currentElement = currentElement.offsetParent)
+		
+			if (event.pageX || event.pageY) { 
+				canvasX = event.pageX;
+				canvasY = event.pageY;
+			} else { 
+				canvasX = event.clientX + document.body.scrollLeft + document.documentElement.scrollLeft; 
+				canvasY = event.clientY + document.body.scrollTop + document.documentElement.scrollTop; 
+			}
+			
+		    canvasX -= totalOffsetX;
+		    canvasY -= totalOffsetY;
+		
+		    return new Point(canvasX, canvasY);
+		}
+
+		var corners = [];
+		
+	    function handleMouseDown(event) {
+	    	if (event.button == 0) {
+		    	corners.push(relativeMouseCoords(event));
+		    	
+		    	if (corners.length == 2) {
+		    		var x1 = corners[0].x;
+		    		var y1 = gl.viewportHeight - corners[0].y;
+		    		var x2 = corners[1].x;
+		    		var y2 = gl.viewportHeight - corners[1].y;
+		    		
+		    		corners = [];
+			    	gl.uniform4f(shaderProgram.colorLoc, Math.random(), Math.random(), Math.random(), 1.0);
+			    	DrawUtils.drawRect(new Point(x1, y1), new Point(x2, y2), gl, shaderProgram.vertexPositionLoc);
+			    }	    		
+	    	} else if (event.button == 2) {
+	    		gl.clear(gl.COLOR_BUFFER_BIT);
+	    	}
+	    }
+	</script>
+
+</head>
+
+<body onload="webGLStart()">
+	Draw random colored rectangle with every two mouse clicks.<br /> 
+	Click points specify the opposite corners of the rectangle.<br />
+	Right click clears the canvas.
+	<br /><br />
+	  
+	<canvas id="webgl_canvas" width="620" height="480"></canvas>
+</body>
+
+</html>

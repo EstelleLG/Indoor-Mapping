@@ -1,0 +1,357 @@
+<!DOCTYPE html> 
+ <html> 
+ <style> 
+   .outside{
+   }
+   .inside{
+   position:relative;
+   }
+   .image_class{
+   position:absolute;
+   }
+   .canvas_class{
+   position:absolute;
+   } 
+ </style>
+ 
+ 
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+	<script type="text/javascript" src="gl-matrix.js"></script>
+	<script type="text/javascript" src="webgl-utils.js"></script>
+	
+	<script type="text/javascript" src="Point.js"></script>
+	<script type="text/javascript" src="Color.js"></script>
+	<script type="text/javascript" src="Drawutils.js"></script>
+		
+	<script id="shader-fs" type="x-shader/x-fragment">
+    
+	    precision mediump float;
+	    
+	    uniform vec4 uColor;
+	
+	    void main(void) {
+	        gl_FragColor = uColor;
+	    }
+	</script>
+
+	<script id="shader-vs" type="x-shader/x-vertex">
+	    attribute vec3 aVertexPosition;
+	
+	    uniform mat4 uPMatrix;
+	
+	    void main(void) {
+	        gl_Position = uPMatrix * vec4(aVertexPosition, 1.0);
+	    }
+	</script>
+
+	<script type="text/javascript">
+		var gl;
+		var shaderProgram;
+		var pMatrix = mat4.create();
+		
+		function initGL(canvas) {
+			gl = WebGLUtils.setupWebGL(canvas, {preserveDrawingBuffer:true});
+			
+			if (!gl) {
+				return;
+			}
+			
+            gl.clearColor(0.0, 0.0, 0.0, 0.0);
+        	
+        	gl.viewportWidth = canvas.width;
+        	gl.viewportHeight = canvas.height;
+        	
+        	mat4.ortho(0, gl.viewportWidth, 0, gl.viewportHeight, -1, 1, pMatrix);
+		}
+		
+		function getShader(gl, id) {
+	        var shaderScript = document.getElementById(id);
+	        
+	        if (!shaderScript) {
+	            return null;
+	        }
+	
+	        var str = "";
+	        var k = shaderScript.firstChild;
+	        
+	        while (k) {
+	            if (k.nodeType == 3) {
+	                str += k.textContent;
+	            }
+	            
+	            k = k.nextSibling;
+	        }
+	
+	        var shader;
+	        
+	        if (shaderScript.type == "x-shader/x-fragment") {
+	            shader = gl.createShader(gl.FRAGMENT_SHADER);
+	        } else if (shaderScript.type == "x-shader/x-vertex") {
+	            shader = gl.createShader(gl.VERTEX_SHADER);
+	        } else {
+	            return null;
+	        }
+	
+	        gl.shaderSource(shader, str);
+	        gl.compileShader(shader);
+	
+	        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+	            alert(gl.getShaderInfoLog(shader));
+	            return null;
+	        }
+	
+	        return shader;
+	    }
+
+	    function initShaders() {
+	        var fragmentShader = getShader(gl, "shader-fs");
+	        var vertexShader = getShader(gl, "shader-vs");
+	
+	        shaderProgram = gl.createProgram();
+	        gl.attachShader(shaderProgram, vertexShader);
+	        gl.attachShader(shaderProgram, fragmentShader);
+	        gl.linkProgram(shaderProgram);
+	
+	        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+	            alert("Could not initialise shaders");
+	        }
+	
+	        gl.useProgram(shaderProgram);
+	
+	        shaderProgram.vertexPositionLoc = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+	        gl.enableVertexAttribArray(shaderProgram.vertexPositionLoc);
+	        
+	        shaderProgram.colorLoc = gl.getUniformLocation(shaderProgram, "uColor");
+	        shaderProgram.pMatrixLoc = gl.getUniformLocation(shaderProgram, "uPMatrix");
+	    }
+	    		
+		function webGLStart() {
+	        var canvas = document.getElementById("webgl_canvas");
+	        initGL(canvas);
+	        initShaders();
+			
+			canvas.onmousedown = handleMouseDown;
+			
+			gl.clear(gl.COLOR_BUFFER_BIT);
+			gl.uniformMatrix4fv(shaderProgram.pMatrixLoc, false, pMatrix);
+	    }
+
+		function relativeMouseCoords(event) {
+		    var totalOffsetX = 0;
+		    var totalOffsetY = 0;
+		    var canvasX = 0;
+		    var canvasY = 0;
+		    var currentElement = document.getElementById("webgl_canvas");
+		
+		    do {
+		        totalOffsetX += currentElement.offsetLeft;
+		        totalOffsetY += currentElement.offsetTop;
+		    } while (currentElement = currentElement.offsetParent)
+		
+			if (event.pageX || event.pageY) { 
+				canvasX = event.pageX;
+				canvasY = event.pageY;
+			} else { 
+				canvasX = event.clientX + document.body.scrollLeft + document.documentElement.scrollLeft; 
+				canvasY = event.clientY + document.body.scrollTop + document.documentElement.scrollTop; 
+			}
+			
+		    canvasX -= totalOffsetX;
+		    canvasY -= totalOffsetY;
+		
+		    return new Point(canvasX, canvasY);
+		}
+
+		var corners = [];
+        var allRect = [];
+        
+        
+        function handleMouseDown(event) {
+            var $container = $('#webgl_canvas');
+            var $selection = $('<div>').addClass('selection-box');
+            
+            if (event.button == 0) {
+                corners.push(relativeMouseCoords(event));
+               
+                $container.on('mousedown', function(e) {
+                    corners.push(relativeMouseCoords(event));
+                    var click_y = corners[0].y;
+                    var click_x = corners[0].x;
+
+                    $selection.css({
+                      'top':    click_y,
+                      'left':   click_x,
+                      'width':  0,
+                      'height': 0,
+                        'Color': 'RED'
+                    });
+                    
+                    $selection.appendTo($container);
+
+                    $container.on('mousemove', function(e) {
+                        var move_x = e.pageX,
+                            move_y = e.pageY,
+                            width  = Math.abs(move_x - click_x),
+                            height = Math.abs(move_y - click_y),
+                            new_x, new_y;
+
+                        new_x = (move_x < click_x) ? (click_x - width) : click_x;
+                        new_y = (move_y < click_y) ? (click_y - height) : click_y;
+
+                        $selection.css({
+                          'width': width,
+                          'height': height,
+                          'top': new_y,
+                          'left': new_x
+                        });
+                    }).on('mouseup', function(e) {
+                        $container.off('mousemove');
+                        $selection.remove();
+                    });
+                });
+                
+            }
+        
+        }
+		
+	    /*function handleMouseDown(event) {
+	    	if (event.button == 0) {
+		    	corners.push(relativeMouseCoords(event));
+		    	
+		    	if (corners.length == 2) {
+		    		var x1 = corners[0].x;
+		    		var y1 = gl.viewportHeight - corners[0].y;
+		    		var x2 = corners[1].x;
+		    		var y2 = gl.viewportHeight - corners[1].y;
+		    		allRect.push(corners[0]);
+                                allRect.push(corners[1]);
+                                
+                                corners = [];
+			    	//gl.uniform4f(shaderProgram.colorLoc, Math.random(), Math.random(), Math.random(), 1.0);
+			    	allRect.push(Math.random());
+                                allRect.push(Math.random());
+                                allRect.push(Math.random());
+                                
+                                //DrawUtils.drawRect(new Point(x1, y1), new Point(x2, y2), gl, shaderProgram.vertexPositionLoc);
+                                
+                                //clear the canvas everytime we add a new rectangle
+                                gl.clear(gl.COLOR_BUFFER_BIT);
+                                //draw all the rectagles again
+                                for (var i = 0; i < allRect.length; i+=5) {
+                                    var p = allRect[i].x;
+                                    var q = gl.viewportHeight - allRect[i].y;
+                                    var r = allRect[i+1].x;
+                                    var s = gl.viewportHeight - allRect[i+1].y;
+                                    var r1 = allRect[i+2];
+                                    var r2 = allRect[i+3];
+                                    var r3 = allRect[i+4];
+               
+                                    gl.uniform4f(shaderProgram.colorLoc, r1, r2, r3, 0.5);
+                                    DrawUtils.drawRect(new Point(p, q), new Point(r, s), gl, shaderProgram.vertexPositionLoc);
+                                
+                                }
+                                
+                            
+                            }	    		
+	    	} else if (event.button == 2) {
+	    		gl.clear(gl.COLOR_BUFFER_BIT);
+                
+                //get click position
+                corners.push(relativeMouseCoords(event));
+                var targetX = corners[0].x;
+                var targetY = corners[0].y;
+                
+                //test from the end of allRect 
+                if (allRect.length > 0) {
+                    for (var i = allRect.length - 1; i >= 0; i -= 5) {
+                        //i / i-1 / i-2  --> random color     i-3 = right bottom corner    i-4 = left top corner
+                        
+                        var lx = allRect[i-4].x;
+                        var rx = allRect[i-3].x;     //lx < rx
+                        var ty = gl.viewportHeight - allRect[i-4].y; 
+                        var by = gl.viewportHeight - allRect[i-3].y; 
+                        
+                        //test if targeX and y is in this area
+                        
+                        
+                        //remove every rectangle xxx 
+                        
+                        //mouse down and on move    both true   --> draw rectangle
+                        //onClick mouse-down= true   onRelease -- mouse-down =falase
+                        
+                        if ((lx < targetX) && (rx > targetX) && (by > targetY) && (ty < targetY)) {
+                            
+                            //delete this rect from allRect   //good way to do this??
+                            allRect[i-4].x = 0;
+                            allRect[i-3].x = 0;
+                            allRect[i-4].y = gl.viewportHeight; 
+                            allRect[i-3].y = gl.viewportHeight; 
+                            allRect[i] = 0;
+                            allRect[i-1] = 0;
+                            allRect[i-2] = 0;
+                            
+                            break;
+                            
+                        }
+                        
+                        
+                    }
+                }
+                
+                //draw all the rectangels again
+                for (var i = 0; i < allRect.length; i+=5) {
+                                    var p = allRect[i].x;
+                                    var q = gl.viewportHeight - allRect[i].y;
+                                    var r = allRect[i+1].x;
+                                    var s = gl.viewportHeight - allRect[i+1].y;
+                                    var r1 = allRect[i+2];
+                                    var r2 = allRect[i+3];
+                                    var r3 = allRect[i+4];
+               
+                                    gl.uniform4f(shaderProgram.colorLoc, r1, r2, r3, 0.5);
+                                    DrawUtils.drawRect(new Point(p, q), new Point(r, s), gl, shaderProgram.vertexPositionLoc);
+                                
+                }
+                
+                //clear corners;
+                corners = [];
+                
+	    	}
+	    }*/
+        
+        
+        
+	</script>
+
+</head>
+
+ <body onload="javascript:foo(); webGLStart()">
+  <script>
+   
+   function getURLParameter(name) {
+      return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search)||[,"duc027(4).png"])[1].replace(/\+/g, '%20'))||null
+   }
+   function foo() {
+      var myvar = getURLParameter('msg');
+      document.getElementById("panoramic_image").src = myvar;
+   }
+  </script>
+
+  <div class="outside">
+     <div class="inside">
+        <img id="panoramic_image" class="image_class" src="" width="1031" height="427"></img>
+        <canvas id="webgl_canvas" class="canvas_class" width="1031" height="427"></canvas>
+     </div>
+  </div>
+  </body>
+
+</html>
+
+
+
+
+
+
+
+

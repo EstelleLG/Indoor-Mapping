@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<meta charset=utf-8 />
+<title>map</title>
+
+<style>
+  body { font-family: sans-serif; }
+    .outside{
+   }
+   .inside{
+   position:relative;
+   }
+   .image_class{
+   position:absolute;
+   }
+   .canvas_class{
+   position:absolute;
+   } 
+  #webgl_canvas {
+    width:  1031px;
+    height: 427px;
+      z-index: 1;
+    background: transparent;
+    line-height: 300px;
+    text-align:  center;
+    color:  #666;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .drag-box {
+      z-index: 2;
+    position:    absolute;
+    background: #666;
+    border:     1px dotted #000;
+    opacity: 0.6;
+  }
+  
+</style>
+<head>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
+</head>
+
+<body onload="javascript:foo()">
+    <script>
+        function getURLParameter(name) {
+          return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search)||[,"duc027(4).png"])[1].replace(/\+/g, '%20'))||null
+       }
+       function foo() {
+          var myvar = getURLParameter('msg');
+          document.getElementById("panoramic_image").src = myvar;
+          var imgH = $('#panoramic_image').height;
+           var imgW = $('#panoramic_image').width;
+           $('#webgl_canvas').css({
+              'width':  imgW,
+              'height': imgH
+            });
+
+       }
+    </script>
+  <div class="outside">
+     <div class="inside">
+        <img id="panoramic_image" class="image_class" src="" ></img>
+        <div id="webgl_canvas" class="canvas_class" ></canvas>
+     </div>
+  </div>
+    
+<script>
+    var rect = [];
+    //check if rect.length > 256
+
+$(function() {
+    
+    var $container = $('#webgl_canvas');
+    var firstpoint;
+    
+    $container.on('mousedown', function(event) {
+        //clear and then redraw
+        var canvas = document.getElementById("webgl_canvas");
+        while( canvas.hasChildNodes() ){
+            canvas.removeChild(canvas.lastChild);
+        }
+        for (var i = 0; i < rect.length; i++) {
+            rect[i].appendTo($container);                  
+        }
+        
+        var y = event.pageY;
+	    var x = event.pageX;
+        var $drag = $('<div>').addClass('drag-box');
+        
+        var r=parseInt(Math.random()*255);
+        var g=parseInt(Math.random()*255);
+        var b=parseInt(Math.random()*255);
+        var bg = "rgb("+r+","+g+","+b+")";
+        firstpoint = true;
+        
+        $container.on('mousemove', function(event) { 
+        if (firstpoint) {
+            $drag.css({
+              'top':    y,
+              'left':   x,
+              'width':  0,
+              'height': 0,
+              'background': bg
+            });
+            $drag.appendTo($container);
+            firstpoint = false;
+        }
+        
+          var dragX = event.pageX;
+          var dragY = event.pageY;
+          var width  = Math.abs(dragX - x);
+          var height = Math.abs(dragY - y);
+          var cornerX, cornerY;
+         
+            
+          if(dragX > $container.width) { dragX = $container.width;}
+          if(dragY > $container.height) { dragY = $container.height; }
+            
+          if (dragX > x) { cornerX = x; }
+          else {cornerX = x - width;}
+          if (dragY > y) {cornerY = y;}
+          else {cornerY = y-height;}
+          
+          $drag.css({
+            'width': width,
+            'height': height,
+            'top': cornerY,
+            'left': cornerX,
+            'background': bg
+          });
+          
+        }).on('mouseup', function(e) {
+            $container.off('mousemove');
+            $container.off('mouseup');
+            
+            
+            rect.push($drag);
+            
+            
+            
+            //add php stuff
+            
+            
+            //mouse  double down -->      
+            
+            
+            
+            
+            
+            
+            
+        });
+    });
+    
+});
+    
+</script>
+
+</body>
+</html>

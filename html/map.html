@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8"/>
+<title>Duc Map</title>
+   <!-- <link rel="stylesheet" href="map.css"> -->
+<style type="text/css">
+
+#some {
+      position:absolute;
+      left:900px;           /*change this*/
+      top:425px;            /*change this*/
+      background-color:aquamarine;
+      margin: 20px auto;
+      width: 40px;
+      height: 40px;
+      border-radius: 200px;
+    z-index: 1;
+    
+    
+}
+
+.areaImage{
+        overflow: scroll;
+                display: none;
+                background: #2f4f4f;
+                height: 88%;
+                width: 70%;
+                padding: 5px;
+                border: 5px solid #696969;
+                float: left;
+                font-size: 1.2em;
+                position: fixed;
+                top: 5%;
+                left: 20%;
+                z-index: 2;
+                opacity: 0.8;
+                
+                box-shadow: 0px 0px 20px #999;
+                /* CSS3 */
+                    -moz-box-shadow: 0px 0px 20px #999;
+                /* Firefox */
+                    -webkit-box-shadow: 0px 0px 20px #999;
+                /* Safari, Chrome */
+                    border-radius: 3px 3px 3px 3px;
+                -moz-border-radius: 3px;
+                /* Firefox */
+                    -webkit-border-radius: 3px;
+                /* Safari, Chrome */;
+    
+            
+    }
+    
+    .text{
+                color: #f5f5dc;
+                font-family: Lucida Grande,Arial,Helvetica,sans-serif;
+                opacity: 1;
+                font-size: 15px;
+            }
+    
+    #descriptionImage{
+        opacity: 1;
+    }
+    .close_Description {
+                float: right;
+                margin: -24px -24px 0 0;
+                position:fixed;
+                top: 7%;
+                left: 90%;
+                z-index: 1;
+    }
+    }
+    
+</style>
+<script language="javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.3/jquery.min.js"></script>
+
+
+    <!-- 
+TheEdisonFamilyCourtyard
+TischCommons
+DainsDining Hall
+-->
+   
+
+<script type="text/javascript" >
+        $(document).ready(function(){
+            
+            
+            
+            $(".areaImage").hide();
+            
+           $(".area").click(function(){
+                
+                $(".text").text($(this).attr('id'));
+                $(".areaImage").fadeIn(300);
+                $("#descriptionImage").attr("src", $(this).attr('id')+".jpg");
+            }); 
+            
+             $(".point").click(function(){
+                $(".text").text($(this).attr('id'));
+                $(".areaImage").fadeIn(300);
+                $("#descriptionImage").attr("src", $(this).attr('id')+".jpg");
+            }); 
+            
+            $(".close_Description").click(function(){
+                $(".areaImage").hide("fast");
+            }); 
+            
+            
+
+
+
+            //need a draw circle function
+         
+        });
+        
+</script>
+    
+    
+    
+</head>
+<body>
+
+    <div>
+        <img src="first-floor.jpg" alt="" usemap="#Map" />
+        <map name="Map" id="Map">
+
+            <area class="area" id="TheEdisonFamilyCourtyard" alt="" title="" href="#" shape="poly" coords="179,194,559,192,564,213,508,213,513,269,532,272,556,440,210,436" />
+            <area class="area" id="DainsDiningHall" alt=""  title="" href="#" shape="poly" coords="564,466,879,463,891,555,577,556" />
+            <area class="area" id="TischCommons" alt="" title="" href="#" shape="poly" coords="209,463,560,463,574,556,220,556" />       
+        </map>
+
+        <div class="point" id="some"></div>
+        
+    </div>
+
+    
+    <div class="areaImage">
+        <a href="#" class="close"><img src="close_pop.png" class="close_Description" title="Close Window" alt="Close" /></a>
+        <p class="text">Yo</p>
+        <div><img id="descriptionImage"></img></div>
+    </div>
+
+
+</body>
+</html>

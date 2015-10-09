@@ -1,0 +1,252 @@
+<!DOCTYPE html> 
+ <html> 
+ <style> 
+   .outside{
+   }
+   .inside{
+   position:relative;
+   }
+   .image_class{
+   position:absolute;
+   }
+   .canvas_class{
+   position:absolute;
+   } 
+ </style>
+ <head>
+	<script type="text/javascript" src="gl-matrix.js"></script>
+	<script type="text/javascript" src="webgl-utils.js"></script>
+	<script type="text/javascript" src="Point.js"></script>
+	<script type="text/javascript" src="Color.js"></script>
+	<script type="text/javascript" src="Drawutils.js"></script>
+
+	<script id="shader-fs" type="x-shader/x-fragment">
+	    precision mediump float;
+	    
+	    uniform vec4 uColor;
+	
+	    void main(void) {
+	        gl_FragColor = uColor;
+	    }
+	</script>
+
+	<script id="shader-vs" type="x-shader/x-vertex">
+	    attribute vec3 aVertexPosition;
+
+	    uniform mat4 uPMatrix;
+
+	    void main(void) {
+	        gl_Position = uPMatrix * vec4(aVertexPosition, 1.0);
+	    }
+	</script>
+
+	<script type="text/javascript">
+		var gl;
+		var shaderProgram;
+		var pMatrix = mat4.create();
+
+		function initGL(canvas) {
+			gl = WebGLUtils.setupWebGL(canvas, {preserveDrawingBuffer:true});
+
+			if (!gl) {
+				return;
+		        }
+
+            gl.clearColor(0.0, 0.0, 0.0, 0.0);
+
+        	gl.viewportWidth = canvas.width;
+        	gl.viewportHeight = canvas.height;
+        	
+        	mat4.ortho(0, gl.viewportWidth, 0, gl.viewportHeight, -1, 1, pMatrix);
+		}
+		
+		function getShader(gl, id) {
+	        var shaderScript = document.getElementById(id);
+	        
+	        if (!shaderScript) {
+	            return null;
+	        }
+	
+	        var str = "";
+	        var k = shaderScript.firstChild;
+	        
+	        while (k) {
+	            if (k.nodeType == 3) {
+	                str += k.textContent;
+	            }
+	            
+	            k = k.nextSibling;
+	        }
+	
+	        var shader;
+	        
+	        if (shaderScript.type == "x-shader/x-fragment") {
+	            shader = gl.createShader(gl.FRAGMENT_SHADER);
+	        } else if (shaderScript.type == "x-shader/x-vertex") {
+	            shader = gl.createShader(gl.VERTEX_SHADER);
+	        } else {
+	            return null;
+	        }
+	
+	        gl.shaderSource(shader, str);
+	        gl.compileShader(shader);
+	
+	        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+	            alert(gl.getShaderInfoLog(shader));
+	            return null;
+	        }
+	
+	        return shader;
+	    }
+
+	    function initShaders() {
+	        var fragmentShader = getShader(gl, "shader-fs");
+	        var vertexShader = getShader(gl, "shader-vs");
+	
+	        shaderProgram = gl.createProgram();
+	        gl.attachShader(shaderProgram, vertexShader);
+	        gl.attachShader(shaderProgram, fragmentShader);
+	        gl.linkProgram(shaderProgram);
+	
+	        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+	            alert("Could not initialise shaders");
+	        }
+	
+	        gl.useProgram(shaderProgram);
+	
+	        shaderProgram.vertexPositionLoc = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+	        gl.enableVertexAttribArray(shaderProgram.vertexPositionLoc);
+	        
+	        shaderProgram.colorLoc = gl.getUniformLocation(shaderProgram, "uColor");
+	        shaderProgram.pMatrixLoc = gl.getUniformLocation(shaderProgram, "uPMatrix");
+	    }
+	    		
+		function webGLStart() {
+	        var canvas = document.getElementById("webgl_canvas");
+	        initGL(canvas);
+	        initShaders();
+			
+			canvas.onmousedown = handleMouseDown;
+			
+			gl.clear(gl.COLOR_BUFFER_BIT);
+			gl.uniformMatrix4fv(shaderProgram.pMatrixLoc, false, pMatrix);
+	    }
+
+		function relativeMouseCoords(event) {
+		    var totalOffsetX = 0;
+		    var totalOffsetY = 0;
+		    var canvasX = 0;
+		    var canvasY = 0;
+		    var currentElement = document.getElementById("webgl_canvas");
+		
+		    do {
+		        totalOffsetX += currentElement.offsetLeft;
+		        totalOffsetY += currentElement.offsetTop;
+		    } while (currentElement = currentElement.offsetParent)
+		
+			if (event.pageX || event.pageY) { 
+				canvasX = event.pageX;
+				canvasY = event.pageY;
+			} else { 
+				canvasX = event.clientX + document.body.scrollLeft + document.documentElement.scrollLeft; 
+				canvasY = event.clientY + document.body.scrollTop + document.documentElement.scrollTop; 
+			}
+
+		    canvasX -= totalOffsetX;
+		    canvasY -= totalOffsetY;
+		
+		    return new Point(canvasX, canvasY);
+		}
+
+
+
+
+
+
+		//change to right click and remove all rectangles in the area. used for face recognition software in MATLAB
+		var all_corners = [];
+		var corners = [];
+		var color_pictures = [];
+			     
+		function handleMouseDown(event) {
+		if (event.button == 0) {
+		        corners.push(relativeMouseCoords(event));
+		    	if (corners.length == 2) {
+			    	var x1 = corners[0].x;
+			    	var y1 = gl.viewportHeight - corners[0].y;
+			    	var x2 = corners[1].x;
+		                var y2 = gl.viewportHeight - corners[1].y;
+		                all_corners.push(corners[0]);
+		                all_corners.push(corners[1]);
+		                corners = [];
+			        color_pictures.push(Math.random());
+			        color_pictures.push(Math.random());
+			        color_pictures.push(Math.random());
+	     	        }
+		}
+		else if (event.button == 1) {
+	    	                var remove_point = relativeMouseCoords(event);
+		                for(i=0; i+1 < all_corners.length; i+=2) {														      
+			        if((((remove_point.x <= all_corners[i].x) && (remove_point.x >= all_corners[i+1].x)) ||
+				    ((remove_point.x >= all_corners[i].x) && (remove_point.x <= all_corners[i+1].x))) &&
+			           (((remove_point.y >= all_corners[i].y) && (remove_point.y <= all_corners[i+1].y)) ||
+				    ((remove_point.y <= all_corners[i].y) && (remove_point.y >= all_corners[i+1].y)))) {
+							for(p = 0, b = i+2; p < all_corners.length && b+1 <= all_corners.length; p++) {					
+							       if(((all_corners[i].x <= all_corners[b].x) && (all_corners[i+1].x >= all_corners[b+1].x)) ||
+							          ((all_corners[i].x >= all_corners[b].x) && (all_corners[i+1].x <= all_corners[b+1].x))) {
+									all_corners.splice(b, 2);
+							                color_pictures.splice(b/2*3,3);						     
+						   	       }
+							       else { b = b+2; }
+							}
+							for(p = 0, j = i-2; p < all_corners.length && j >= 0 && i >=0; p++, i-=2) {									    
+							       if(((all_corners[i].x <= all_corners[j].x) && (all_corners[i+1].x >= all_corners[j+1].x)) ||
+								  ((all_corners[i].x >= all_corners[j].x) && (all_corners[i+1].x <= all_corners[j+1].x))) {
+									all_corners.splice(j,2);
+									color_pictures.splice(j/2*3,3);
+							       }
+							       else { j = j-2; i = i+2; }
+							}
+							all_corners.splice(i, 2);
+							color_pictures.splice(i/2*3,3);	    
+						      }}}
+	      
+		gl.clear(gl.COLOR_BUFFER_BIT);
+		var k=0;
+		for(i=0; i < all_corners.length; i+=2) {
+			var x1 = all_corners[i].x;
+			var y1 = gl.viewportHeight - all_corners[i].y;
+			var x2 = all_corners[i+1].x;
+			var y2 = gl.viewportHeight - all_corners[i+1].y;
+			gl.uniform4f(shaderProgram.colorLoc, color_pictures[i/2*3], color_pictures[i/2*3+1], color_pictures[i/2*3+2], 0.5);
+			DrawUtils.drawRect(new Point(x1, y1), new Point(x2, y2), gl, shaderProgram.vertexPositionLoc);
+			k=k+3;
+	        }
+		}
+
+	</script>
+ </head>
+
+ <body onload="javascript:foo(); webGLStart()">
+  <script>
+   
+   function getURLParameter(name) {
+      return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search)||[,"duc027(4).png"])[1].replace(/\+/g, '%20'))||null
+   }
+   function foo() {
+      var myvar = getURLParameter('msg');
+      document.getElementById("panoramic_image").src = myvar;
+   }
+  </script>
+
+  <div class="outside">
+     <div class="inside">
+        <img id="panoramic_image" class="image_class" src="" width="200"></img>
+        <canvas id="webgl_canvas" class="canvas_class" width="1031" height="427"></canvas>
+     </div>
+  </div>
+  </body>
+
+</html>
+
+

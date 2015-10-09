@@ -1,0 +1,297 @@
+<!DOCTYPE html> 
+ <html> 
+ <style> 
+   .outside{
+   }
+   .inside{
+   position:relative;
+   }
+   .image_class{
+   position:absolute;
+   }
+   .canvas_class{
+   position:absolute;
+   } 
+ #webgl_canvas {
+      z-index: 1;
+    background: transparent;
+    line-height: 300px;
+    text-align:  center;
+    color:  #666;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .drag-box {
+      z-index: 199;
+    position:    absolute;
+    background: #666;
+    border:     1px dotted #000;
+    opacity: 0.6;
+  }
+ </style>
+ 
+ 
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+	<script type="text/javascript" src="gl-matrix.js"></script>
+	<script type="text/javascript" src="webgl-utils.js"></script>
+	
+	<script type="text/javascript" src="Point.js"></script>
+	<script type="text/javascript" src="Color.js"></script>
+	<script type="text/javascript" src="Drawutils.js"></script>
+		
+	<script id="shader-fs" type="x-shader/x-fragment">
+    
+	    precision mediump float;
+	    
+	    uniform vec4 uColor;
+	
+	    void main(void) {
+	        gl_FragColor = uColor;
+	    }
+	</script>
+
+	<script id="shader-vs" type="x-shader/x-vertex">
+	    attribute vec3 aVertexPosition;
+	
+	    uniform mat4 uPMatrix;
+	
+	    void main(void) {
+	        gl_Position = uPMatrix * vec4(aVertexPosition, 1.0);
+	    }
+	</script>
+
+	<script type="text/javascript">
+		var gl;
+		var shaderProgram;
+		var pMatrix = mat4.create();
+        var $container = $('#container');
+        var $selection = $('<div>').addClass('selection-box');
+
+		
+		function initGL(canvas) {
+			gl = WebGLUtils.setupWebGL(canvas, {preserveDrawingBuffer:true});
+			
+			if (!gl) {
+				return;
+			}
+			
+            gl.clearColor(0.0, 0.0, 0.0, 0.0);
+        	
+        	gl.viewportWidth = canvas.width;
+        	gl.viewportHeight = canvas.height;
+        	
+        	mat4.ortho(0, gl.viewportWidth, 0, gl.viewportHeight, -1, 1, pMatrix);
+		}
+		
+		function getShader(gl, id) {
+	        var shaderScript = document.getElementById(id);
+	        
+	        if (!shaderScript) {
+	            return null;
+	        }
+	
+	        var str = "";
+	        var k = shaderScript.firstChild;
+	        
+	        while (k) {
+	            if (k.nodeType == 3) {
+	                str += k.textContent;
+	            }
+	            
+	            k = k.nextSibling;
+	        }
+	
+	        var shader;
+	        
+	        if (shaderScript.type == "x-shader/x-fragment") {
+	            shader = gl.createShader(gl.FRAGMENT_SHADER);
+	        } else if (shaderScript.type == "x-shader/x-vertex") {
+	            shader = gl.createShader(gl.VERTEX_SHADER);
+	        } else {
+	            return null;
+	        }
+	
+	        gl.shaderSource(shader, str);
+	        gl.compileShader(shader);
+	
+	        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+	            alert(gl.getShaderInfoLog(shader));
+	            return null;
+	        }
+	
+	        return shader;
+	    }
+
+	    function initShaders() {
+	        var fragmentShader = getShader(gl, "shader-fs");
+	        var vertexShader = getShader(gl, "shader-vs");
+	
+	        shaderProgram = gl.createProgram();
+	        gl.attachShader(shaderProgram, vertexShader);
+	        gl.attachShader(shaderProgram, fragmentShader);
+	        gl.linkProgram(shaderProgram);
+	
+	        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+	            alert("Could not initialise shaders");
+	        }
+	
+	        gl.useProgram(shaderProgram);
+	
+	        shaderProgram.vertexPositionLoc = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+	        gl.enableVertexAttribArray(shaderProgram.vertexPositionLoc);
+	        
+	        shaderProgram.colorLoc = gl.getUniformLocation(shaderProgram, "uColor");
+	        shaderProgram.pMatrixLoc = gl.getUniformLocation(shaderProgram, "uPMatrix");
+	    }
+	    		
+		function webGLStart() {
+	        var canvas = document.getElementById("webgl_canvas");
+	        initGL(canvas);
+	        initShaders();
+			
+			//canvas.onmousedown = handleMouseDown;
+			
+			gl.clear(gl.COLOR_BUFFER_BIT);
+			gl.uniformMatrix4fv(shaderProgram.pMatrixLoc, false, pMatrix);
+	    }
+
+		function relativeMouseCoords(event) {
+		    var totalOffsetX = 0;
+		    var totalOffsetY = 0;
+		    var canvasX = 0;
+		    var canvasY = 0;
+		    var currentElement = document.getElementById("webgl_canvas");
+		
+		    do {
+		        totalOffsetX += currentElement.offsetLeft;
+		        totalOffsetY += currentElement.offsetTop;
+		    } while (currentElement = currentElement.offsetParent)
+		
+			if (event.pageX || event.pageY) { 
+				canvasX = event.pageX;
+				canvasY = event.pageY;
+			} else { 
+				canvasX = event.clientX + document.body.scrollLeft + document.documentElement.scrollLeft; 
+				canvasY = event.clientY + document.body.scrollTop + document.documentElement.scrollTop; 
+			}
+			
+		    canvasX -= totalOffsetX;
+		    canvasY -= totalOffsetY;
+		
+		    return new Point(canvasX, canvasY);
+		}
+
+		
+        
+        
+        
+	</script>
+
+</head>
+
+ <body onload="javascript:foo(); webGLStart(); yoo()">
+  <script>
+   
+   function getURLParameter(name) {
+      return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search)||[,"duc027(4).png"])[1].replace(/\+/g, '%20'))||null
+   }
+   function foo() {
+      var myvar = getURLParameter('msg');
+      document.getElementById("panoramic_image").src = myvar;
+   }
+  </script>
+
+  <div class="outside">
+     <div class="inside">
+        <img id="panoramic_image" class="image_class" src="" width="1031" height="427"></img>
+        <canvas id="webgl_canvas" class="canvas_class" width="1031" height="427"></canvas>
+      <div id = "container" width ="1031" height="427"> </div>
+     </div>
+  </div>
+  
+  
+  <script>
+    var rect = [];
+
+function yoo() {
+    
+    var $container = $('#webgl_canvas');
+    alert("alert");
+    
+    $container.on('mousedown', function(event) {
+        $container.clear
+        alert("enter");
+        
+        var y = event.pageY;
+	    var x = event.pageX;
+        var $drag = $('<div>').addClass('drag-box');
+        
+        var r=parseInt(Math.random()*255);
+        var g=parseInt(Math.random()*255);
+        var b=parseInt(Math.random()*255);
+        var bg = "rgb("+r+","+g+","+b+")";
+        $drag.css({
+          'top':    y,
+          'left':   x,
+          'width':  0,
+          'height': 0,
+          'background': bg
+        });
+        $drag.appendTo($container);
+        
+        $container.on('mousemove', function(event) { 
+          var dragX = event.pageX;
+          var dragY = event.pageY;
+          var width  = Math.abs(dragX - x);
+          var height = Math.abs(dragY - y);
+          var cornerX, cornerY;
+            
+          if (dragX > x) { cornerX = x; }
+          else {cornerX = x - width;}
+          if (dragY > y) {cornerY = y;}
+          else {cornerY = y-height;}
+          
+         
+          
+          $drag.css({
+            'width': width,
+            'height': height,
+            'top': cornerY,
+            'left': cornerX,
+            'background': bg
+          });
+          
+        }).on('mouseup', function(e) {
+            $container.off('mousemove');
+            $container.off('mouseup');
+            
+            
+            
+            rect.push($drag.width);
+            rect.push($drag.height);
+            rect.push($drag.top);
+            rect.push($drag.left);
+            
+            
+        });
+    });
+    
+}
+    
+</script>
+  
+  
+  
+  </body>
+
+</html>
+
+
+
+
+
+
+
+
